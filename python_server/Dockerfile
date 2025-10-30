@@ -34,7 +34,8 @@ FROM python:3.11
 WORKDIR /app
 RUN apt update && apt install -y \
     procps bubblewrap libcap2-bin \
-    build-essential gfortran libatlas-base-dev python3-dev \
+    build-essential gfortran python3-dev \
+    libopenblas-dev liblapack-dev pkg-config \
     && apt clean
 
 RUN pip install --no-cache-dir pandas numpy fastapi uvicorn[standard]
