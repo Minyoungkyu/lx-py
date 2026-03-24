@@ -33,6 +33,7 @@ class InteractiveSession:
         # 둘 다 완료될 때까지 기다렸다가 실행 종료 메시지 전송
         async def notify_done():
             await asyncio.gather(stdout_task, stderr_task)
+            await self.proc.wait()
             await self.ws.send_json({
                 "type": "done",
                 "sessionId": self.session_id,
@@ -94,6 +95,7 @@ class InteractiveSession:
     async def cleanup(self):
         if self.proc and self.proc.returncode is None:
             self.proc.kill()
+            await self.proc.wait()
 
 
     async def run_grading(self, file_path: str, testcases: list):
@@ -154,6 +156,7 @@ class InteractiveSession:
         self.proc = await asyncio.create_subprocess_exec(
             "bwrap",
             "--setenv", "PYTHONUNBUFFERED", "1",
+            "--setenv", "OPENBLAS_NUM_THREADS", "1",
             "--ro-bind", "/usr", "/usr",
             "--ro-bind", "/bin", "/bin",
             "--ro-bind", "/lib", "/lib",
@@ -187,6 +190,7 @@ class InteractiveSession:
 
         async def notify_done():
             await asyncio.gather(stdout_task, stderr_task)
+            await self.proc.wait()
             await self.ws.send_json({
                 "type": "done",
                 "sessionId": self.session_id,
@@ -226,6 +230,7 @@ class InteractiveSession:
         bwrap_cmd = [
             "bwrap",
             "--setenv", "PYTHONUNBUFFERED", "1",
+            "--setenv", "OPENBLAS_NUM_THREADS", "1",
             "--ro-bind", "/usr", "/usr",
             "--ro-bind", "/usr/local", "/usr/local",
             "--ro-bind", "/bin", "/bin",
@@ -286,7 +291,8 @@ class InteractiveSession:
             try:
                 # 스트림 읽기 완료 대기
                 await asyncio.gather(stdout_task, stderr_task)
-                
+                await self.proc.wait()
+
                 # 데이터 처리
                 output = b''.join(self.grading_stdout_data).decode()
                 error = b''.join(self.grading_stderr_data).decode()
@@ -328,3 +334,4 @@ class InteractiveSession:
     async def terminate_process(self):
         if self.proc and self.proc.returncode is None:
             self.proc.kill()
+            await self.proc.wait()
