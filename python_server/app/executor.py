@@ -51,8 +51,17 @@ class InteractiveSession:
                     break
 
                 decoded = chunk.decode()
-                if msg_type == "output" and decoded.startswith("__NEED_INPUT__"):
-                    prompt = decoded[len("__NEED_INPUT__"):]
+                if msg_type == "output" and "__NEED_INPUT__" in decoded:
+                    parts = decoded.split("__NEED_INPUT__")
+                    # parts[0]은 __NEED_INPUT__ 앞의 일반 출력
+                    if parts[0]:
+                        await self.ws.send_json({
+                            "type": msg_type,
+                            "sessionId": self.session_id,
+                            "value": parts[0]
+                        })
+                    # parts[1]은 프롬프트 텍스트
+                    prompt = parts[1] if len(parts) > 1 else ""
                     await self.ws.send_json({
                         "type": "input_required",
                         "sessionId": self.session_id,
