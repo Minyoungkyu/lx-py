@@ -10,6 +10,17 @@ class InteractiveSession:
         self.proc = None
         self.timeout_task = None
 
+    async def _safe_send_json(self, payload: dict) -> bool:
+        """WebSocket이 이미 닫혔거나 전송 중 오류가 나도 예외를 밖으로 던지지 않는다.
+        (닫힌 소켓에 send 시 발생하는 RuntimeError가 백그라운드 태스크의
+         'Task exception was never retrieved'로 남거나 endpoint를 깨뜨리는 것을 방지)"""
+        try:
+            await self.ws.send_json(payload)
+            return True
+        except Exception as e:
+            print(f"[_safe_send_json] 전송 실패(무시): {e}")
+            return False
+
     async def run_file(self, file_path: str):
         if not os.path.isfile(file_path):
             await self.ws.send_json({
@@ -34,7 +45,7 @@ class InteractiveSession:
         async def notify_done():
             await asyncio.gather(stdout_task, stderr_task)
             await self.proc.wait()
-            await self.ws.send_json({
+            await self._safe_send_json({
                 "type": "done",
                 "sessionId": self.session_id,
                 "value": "▶  실행 종료"
@@ -84,9 +95,17 @@ class InteractiveSession:
                 self.timeout_task.cancel()
 
     async def send_stdin(self, value: str):
-        if self.proc and self.proc.stdin:
+        # 프로세스가 종료/kill되어 stdin transport가 닫힌 뒤 들어온 입력은 무시한다.
+        # (그렇지 않으면 write가 RuntimeError를 던지고, 이 예외가 input 핸들러 밖으로
+        #  전파되어 websocket_endpoint가 종료 → 공유 WebSocket 연결 전체가 닫히는
+        #  장애로 이어진다.)
+        if not self.proc or self.proc.stdin is None or self.proc.returncode is not None:
+            return
+        try:
             self.proc.stdin.write((value + "\n").encode())
             await self.proc.stdin.drain()
+        except (RuntimeError, BrokenPipeError, ConnectionError, OSError) as e:
+            print(f"[send_stdin] 종료된 프로세스로의 입력 무시: {e}")
 
     async def _enforce_timeout(self, seconds: int):
         try:
@@ -200,7 +219,7 @@ class InteractiveSession:
         async def notify_done():
             await asyncio.gather(stdout_task, stderr_task)
             await self.proc.wait()
-            await self.ws.send_json({
+            await self._safe_send_json({
                 "type": "done",
                 "sessionId": self.session_id,
                 "value": "▶  실행 종료"

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from app.executor import InteractiveSession
 from typing import Dict
 import asyncio
@@ -207,6 +207,9 @@ async def websocket_endpoint(ws: WebSocket):
                         except Exception as e:
                             print(f"디렉토리 삭제 실패: {e}")
 
+    except WebSocketDisconnect:
+        # 클라이언트 정상 종료(code 1000/1005 등)는 정상 흐름 → traceback 없이 조용히 처리(로그 노이즈 제거)
+        pass
     except Exception as e:
         import traceback
         print("WebSocket error:", e)
