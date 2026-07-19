@@ -195,7 +195,7 @@ class InteractiveSession:
             "--dev", "/dev",
            # "--proc", "/proc",
             "--unshare-all",
-            "--share-net",
+            # "--share-net",  # 제거: 학생 코드의 네트워크를 완전 차단(--unshare-all 의 net 네임스페이스 격리를 재공유하지 않음). 인터넷/AWS 메타데이터 접근 차단.
             "--ro-bind", "/dev/null", "/etc/resolv.conf",
             "--die-with-parent",
             "/usr/local/bin/python3", "/projectFiles/executor_runner.py",
@@ -271,7 +271,7 @@ class InteractiveSession:
             "--dev", "/dev",
            # "--proc", "/proc",
             "--unshare-all",
-            "--share-net",
+            # "--share-net",  # 제거: 학생 코드의 네트워크를 완전 차단(--unshare-all 의 net 네임스페이스 격리를 재공유하지 않음). 인터넷/AWS 메타데이터 접근 차단.
             "--ro-bind", "/dev/null", "/etc/resolv.conf",
             "--die-with-parent",
             "/usr/local/bin/python3", "/projectFiles/executor_runner.py",
